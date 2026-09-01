@@ -1,6 +1,10 @@
 import type { Order, Receipt } from "../domain/types.js";
 
-export class OrderDatabase {
+export interface OrderRepository {
+  save(order: Order, receipt: Receipt): void;
+}
+
+export class OrderDatabase implements OrderRepository {
   private readonly records: Array<{ order: Order; receipt: Receipt }> = [];
 
   save(order: Order, receipt: Receipt): void {

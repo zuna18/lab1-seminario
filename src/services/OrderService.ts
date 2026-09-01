@@ -1,18 +1,25 @@
-import type { Order, Receipt } from "../domain/types.js";
-import { EmailService } from "../infrastructure/EmailService.js";
-import { OrderDatabase } from "../infrastructure/OrderDatabase.js";
-import type { PaymentProcessor } from "../payments/PaymentProcessor.js";
+import type { CustomerType, Order, Receipt } from "../domain/types.js";
+import { EmailService, type Notifier } from "../infrastructure/EmailService.js";
+import { OrderDatabase, type OrderRepository } from "../infrastructure/OrderDatabase.js";
+import type { Payable } from "../payments/PaymentProcessor.js";
 import { PickupService, ShippingService } from "../shipping/ShippingService.js";
 
+const discountRates: Record<CustomerType, number> = {
+  regular: 0,
+  premium: 0.1,
+  employee: 0.2,
+  vip: 0.3,
+};
 // Esta clase contiene fallas de diseño intencionales para el laboratorio.
 // El objetivo es mejorar el diseño manteniendo el comportamiento observable.
 export class OrderService {
   // Falla intencional (DIP): el servicio de alto nivel crea y conoce detalles
   // concretos de base de datos, correo y envío.
-  private readonly database = new OrderDatabase();
-  private readonly emailService = new EmailService();
-
-  process(order: Order, payment: PaymentProcessor): Receipt {
+    constructor(
+    private readonly repository: OrderRepository = new OrderDatabase(),
+    private readonly notifier: Notifier = new EmailService(),
+  ) {}
+    process(order: Order, payment: Payable): Receipt {
     if (order.products.length === 0) {
       throw new Error("El pedido debe contener al menos un producto");
     }
@@ -25,14 +32,7 @@ export class OrderService {
     );
 
     // Falla intencional (OCP): cada tipo nuevo obliga a modificar este bloque.
-    let discount = 0;
-    if (order.customer.type === "regular") {
-      discount = 0;
-    } else if (order.customer.type === "premium") {
-      discount = subtotal * 0.1;
-    } else if (order.customer.type === "employee") {
-      discount = subtotal * 0.2;
-    }
+    const discount = subtotal * discountRates[order.customer.type];
 
     const shipping =
       order.deliveryType === "home"
@@ -50,8 +50,8 @@ export class OrderService {
       total,
     };
 
-    this.database.save(order, receipt);
-    this.emailService.send(
+    this.repository.save(order, receipt);
+    this.notifier.send(
       order.customer.email,
       `Pedido ${order.id} confirmado`,
       `Total: $${total.toFixed(2)}. Transacción: ${transactionId}`,
@@ -62,11 +62,10 @@ export class OrderService {
   }
 
   scheduleDelivery(order: Order): string {
-    const shipping =
-      order.deliveryType === "home"
-        ? new ShippingService()
-        : new PickupService();
-    return shipping.schedule(order);
+    if (order.deliveryType !== "home") {
+      return `El pedido ${order.id} es para recoger y no requiere programación de envío`;
+    }
+    return new ShippingService().schedule(order);
   }
 
   private printReceipt(receipt: Receipt): void {

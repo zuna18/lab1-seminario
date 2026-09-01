@@ -4,10 +4,12 @@ export type Product = {
   quantity: number;
 };
 
+export type CustomerType = "regular" | "premium" | "employee" | "vip";
+
 export type Customer = {
   name: string;
   email: string;
-  type: "regular" | "premium" | "employee";
+  type: CustomerType;
 };
 
 export type Order = {

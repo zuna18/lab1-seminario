@@ -1,12 +1,18 @@
-// Falla intencional (ISP): todos los procesadores están obligados a soportar
-// operaciones que quizá no tienen sentido para ellos.
-export interface PaymentProcessor {
+// ISP: se separan las capacidades en interfaces pequeñas. Cada procesador
+// implementa solo lo que realmente puede cumplir.
+export interface Payable {
   pay(amount: number): string;
+}
+
+export interface Refundable {
   refund(transactionId: string): void;
+}
+
+export interface Reportable {
   generateMonthlyReport(): string;
 }
 
-export class CardPaymentProcessor implements PaymentProcessor {
+export class CardPaymentProcessor implements Payable, Refundable, Reportable {
   pay(amount: number): string {
     return `CARD-${amount.toFixed(2)}`;
   }
@@ -20,16 +26,8 @@ export class CardPaymentProcessor implements PaymentProcessor {
   }
 }
 
-export class CashPaymentProcessor implements PaymentProcessor {
+export class CashPaymentProcessor implements Payable {
   pay(amount: number): string {
     return `CASH-${amount.toFixed(2)}`;
-  }
-
-  refund(_transactionId: string): void {
-    throw new Error("Los pagos en efectivo no se reembolsan aquí");
-  }
-
-  generateMonthlyReport(): string {
-    throw new Error("El pago en efectivo no genera reportes mensuales");
   }
 }

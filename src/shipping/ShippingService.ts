@@ -1,6 +1,17 @@
 import type { Order } from "../domain/types.js";
 
-export class ShippingService {
+
+// Falla intencional (LSP): PickupService hereda un contrato de envío, pero no
+// puede cumplirlo y cambia una regla que el código cliente da por sentada.
+export interface Costable {
+  calculateCost(order: Order): number;
+}
+
+export interface Schedulable {
+  schedule(order: Order): string;
+}
+
+export class ShippingService implements Costable, Schedulable {
   calculateCost(order: Order): number {
     return order.products.reduce(
       (total, product) => total + product.quantity,
@@ -13,14 +24,8 @@ export class ShippingService {
   }
 }
 
-// Falla intencional (LSP): PickupService hereda un contrato de envío, pero no
-// puede cumplirlo y cambia una regla que el código cliente da por sentada.
-export class PickupService extends ShippingService {
-  override calculateCost(_order: Order): number {
+export class PickupService implements Costable {
+  calculateCost(_order: Order): number {
     return 0;
-  }
-
-  override schedule(_order: Order): string {
-    throw new Error("Un pedido para recoger no puede programar un envío");
   }
 }
